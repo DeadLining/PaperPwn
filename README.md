@@ -165,6 +165,16 @@ PaperMate/
 | `mindmaps/` | 思维导图数据文件，JSON 格式 |
 | `ai-cache/` | AI 请求与响应缓存，减少重复 API 调用 |
 
+## 应用截图
+
+### 文献库
+
+![Library](assets/screenshots/Library_example.jpg)
+
+### 阅读器与 AI 摘要
+
+![Reader](assets/screenshots/Reader_example.jpg)
+
 ## 功能概述
 
 PaperMate 提供以下核心功能：
