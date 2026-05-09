@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { RecentPapers } from '@/components/RecentPapers'
 import { usePaperStore } from '@/lib/stores/paper-store'
-import paperMateLogo from '@/assets/papermate-logo.png'
+import paperPwnLogo from '@/assets/paperpwn-logo.png'
 
 interface RightPanelContextType {
   isOpen: boolean
@@ -77,8 +77,8 @@ export function AppShell() {
           <aside className="w-56 shrink-0 border-r border-border bg-card flex flex-col">
             <div className="p-4 border-b border-border">
               <div className="flex items-center gap-2">
-                <img src={paperMateLogo} alt="PaperMate logo" className="h-7 w-7 rounded-md object-cover" />
-                <h1 className="text-lg font-semibold text-foreground">PaperMate</h1>
+                <img src={paperPwnLogo} alt="PaperPwn logo" className="h-7 w-7 rounded-md object-cover" />
+                <h1 className="text-lg font-semibold text-foreground">PaperPwn</h1>
               </div>
             </div>
             <nav className="p-2 space-y-1">
@@ -105,7 +105,7 @@ export function AppShell() {
             <RecentPapers />
             <div className="flex-1" />
             <div className="p-4 border-t border-border">
-              <p className="text-xs text-muted-foreground">PaperMate v0.1.0</p>
+              <p className="text-xs text-muted-foreground">PaperPwn v1.0.0</p>
             </div>
           </aside>
 

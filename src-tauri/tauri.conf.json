@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "PaperMate",
+  "productName": "PaperPwn",
   "version": "1.0.0",
-  "identifier": "com.papermate.app",
+  "identifier": "com.paperpwn.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "PaperMate",
+        "title": "PaperPwn",
         "width": 1200,
         "height": 800,
         "minWidth": 900,

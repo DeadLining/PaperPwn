@@ -110,7 +110,7 @@ export interface AiConfig {
   updatedAt: string;
 }
 
-const AI_CONFIG_STORAGE_KEY = "papermate.aiConfig";
+const AI_CONFIG_STORAGE_KEY = "paperpwn.aiConfig";
 
 // ---- Database ----
 

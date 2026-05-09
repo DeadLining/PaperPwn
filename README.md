@@ -1,4 +1,4 @@
-# PaperMate
+# PaperPwn
 
 本地论文阅读与 AI 辅助管理软件。
 
@@ -64,15 +64,15 @@ npm run tauri build
 
 | 产物 | 路径 |
 |------|------|
-| **DMG 安装包** | `src-tauri/target/release/bundle/dmg/PaperMate_0.1.0_aarch64.dmg` |
-| **App 应用包** | `src-tauri/target/release/bundle/macos/PaperMate.app` |
+| **DMG 安装包** | `src-tauri/target/release/bundle/dmg/PaperPwn_1.0.0_aarch64.dmg` |
+| **App 应用包** | `src-tauri/target/release/bundle/macos/PaperPwn.app` |
 
 详细的 macOS Apple Silicon 打包步骤、签名说明和常见问题处理请参阅 [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)。
 
 ## 项目结构
 
 ```
-PaperMate/
+PaperPwn/
 ├── src/                           # 前端源码
 │   ├── pages/                     # 页面组件
 │   │   ├── LibraryList.tsx        # 文献库列表页
@@ -146,10 +146,10 @@ PaperMate/
 
 ## 数据存储
 
-应用数据存储在 `~/Library/Application Support/com.papermate.app/PaperLibrary/` 目录下：
+应用数据存储在 `~/Library/Application Support/com.paperpwn.app/PaperLibrary/` 目录下：
 
 ```
-~/Library/Application Support/com.papermate.app/PaperLibrary/
+~/Library/Application Support/com.paperpwn.app/PaperLibrary/
 ├── papers/             # PDF 文件（SHA256 哈希命名）
 ├── notes/              # Markdown 笔记
 ├── annotations/        # 标注数据（JSON）
@@ -177,7 +177,7 @@ PaperMate/
 
 ## 功能概述
 
-PaperMate 提供以下核心功能：
+PaperPwn 提供以下核心功能：
 
 | 功能 | 说明 |
 |------|------|
@@ -200,4 +200,4 @@ PaperMate 提供以下核心功能：
 ## 版本信息
 
 - **当前版本**: v1.0.0
-- **应用标识符**: com.papermate.app
+- **应用标识符**: com.paperpwn.app

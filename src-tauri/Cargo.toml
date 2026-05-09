@@ -1,16 +1,16 @@
 [package]
-name = "papermate"
+name = "paperpwn"
 version = "1.0.0"
 description = "A paper management desktop application"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "papermate_lib"
+name = "paperpwn_lib"
 crate-type = ["staticlib", "cdylib", "lib"]
 
 [[bin]]
-name = "PaperMate"
+name = "PaperPwn"
 path = "src/main.rs"
 
 [build-dependencies]

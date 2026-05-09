@@ -29,7 +29,7 @@ fn setup_paper_library(app: &tauri::App) -> Result<(), Box<dyn std::error::Error
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}! Welcome to PaperMate.", name)
+    format!("Hello, {}! Welcome to PaperPwn.", name)
 }
 
 #[tauri::command]
@@ -153,7 +153,7 @@ fn set_macos_dock_icon() {
 
     unsafe {
         let _pool = NSAutoreleasePool::new(nil);
-        let icon_path = format!("{}/../src/assets/papermate-logo.png", env!("CARGO_MANIFEST_DIR"));
+        let icon_path = format!("{}/../src/assets/paperpwn-logo.png", env!("CARGO_MANIFEST_DIR"));
         let ns_path = NSString::alloc(nil).init_str(&icon_path);
         let image: id = NSImage::alloc(nil).initWithContentsOfFile_(ns_path);
         if image != nil {

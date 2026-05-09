@@ -1,6 +1,6 @@
-# PaperMate 构建指南
+# PaperPwn 构建指南
 
-本文档说明在 macOS Apple Silicon 机器上构建 PaperMate 桌面应用的完整步骤。
+本文档说明在 macOS Apple Silicon 机器上构建 PaperPwn 桌面应用的完整步骤。
 
 ## 环境要求
 
@@ -37,7 +37,7 @@ xcode-select --install
 ### 第一步：安装前端依赖
 
 ```bash
-cd /path/to/PaperMate
+cd /path/to/PaperPwn
 npm install
 ```
 
@@ -59,15 +59,15 @@ npm run tauri build
 ```
 src-tauri/target/release/bundle/
 ├── dmg/                              # .dmg 安装包
-│   └── PaperMate_0.1.0_aarch64.dmg
+│   └── PaperPwn_1.0.0_aarch64.dmg
 └── macos/                            # .app 应用包（未签名）
-    └── PaperMate.app
+    └── PaperPwn.app
 ```
 
 | 产物 | 路径 | 说明 |
 |------|------|------|
-| **DMG 安装包** | `src-tauri/target/release/bundle/dmg/PaperMate_0.1.0_aarch64.dmg` | 分发用安装程序 |
-| **App 应用包** | `src-tauri/target/release/bundle/macos/PaperMate.app` | 可直接运行的应用 |
+| **DMG 安装包** | `src-tauri/target/release/bundle/dmg/PaperPwn_1.0.0_aarch64.dmg` | 分发用安装程序 |
+| **App 应用包** | `src-tauri/target/release/bundle/macos/PaperPwn.app` | 可直接运行的应用 |
 
 ### 关于 aarch64
 
@@ -92,7 +92,7 @@ npm run tauri dev
 这会：
 1. 启动 Vite 开发服务器（`http://localhost:1420`）
 2. 编译 Rust 后端（debug 模式）
-3. 打开 PaperMate 桌面窗口
+3. 打开 PaperPwn 桌面窗口
 
 ### 查看 Rust 日志
 
@@ -104,14 +104,14 @@ npm run tauri dev
 
 ```bash
 codesign --force --deep --sign "Developer ID Application: Your Name" \
-  src-tauri/target/release/bundle/macos/PaperMate.app
+  src-tauri/target/release/bundle/macos/PaperPwn.app
 ```
 
 ### 对 .dmg 进行签名
 
 ```bash
 codesign --force --sign "Developer ID Application: Your Name" \
-  src-tauri/target/release/bundle/dmg/PaperMate_0.1.0_aarch64.dmg
+  src-tauri/target/release/bundle/dmg/PaperPwn_1.0.0_aarch64.dmg
 ```
 
 ### 上传到 TestFlight / 直接分发
@@ -152,11 +152,11 @@ export CARGO_BUILD_JOBS=4
 检查日志：
 
 ```bash
-tail -f ~/LibraryLogs/org.tauri.plog/PaperMate/ stderr.log
+tail -f ~/LibraryLogs/org.tauri.plog/PaperPwn/ stderr.log
 ```
 
 或运行以下命令查看详细错误：
 
 ```bash
-~/Library/Application\ Support/com.papermate.app/PaperMate.app/Contents/MacOS/PaperMate
+~/Library/Application\ Support/com.paperpwn.app/PaperPwn.app/Contents/MacOS/PaperPwn
 ```

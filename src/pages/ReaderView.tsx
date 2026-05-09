@@ -50,7 +50,7 @@ export function ReaderView() {
   const [translationRequest, setTranslationRequest] = useState<TranslationRequest | null>(null)
   const [outlineGenerating, setOutlineGenerating] = useState(false)
   const [pdfViewerMode, setPdfViewerMode] = useState<"legacy" | "react">(() =>
-    localStorage.getItem("papermate-pdf-viewer") === "react" ? "react" : "legacy"
+    localStorage.getItem("paperpwn-pdf-viewer") === "react" ? "react" : "legacy"
   )
   const routePaperId = id!
 
@@ -134,7 +134,7 @@ export function ReaderView() {
   const togglePdfViewerMode = () => {
     const next = pdfViewerMode === "legacy" ? "react" : "legacy"
     setPdfViewerMode(next)
-    localStorage.setItem("papermate-pdf-viewer", next)
+    localStorage.setItem("paperpwn-pdf-viewer", next)
     toast.info(next === "react" ? "已切换到 React PDF Viewer POC" : "已切换到原 PDF Viewer")
   }
 

@@ -1,6 +1,6 @@
 export type ThemePreference = "light" | "dark" | "system"
 
-const THEME_STORAGE_KEY = "papermate-theme"
+const THEME_STORAGE_KEY = "paperpwn-theme"
 const DARK_QUERY = "(prefers-color-scheme: dark)"
 
 export function getStoredTheme(): ThemePreference {
