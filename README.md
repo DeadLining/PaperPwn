@@ -193,102 +193,13 @@ PaperMate 提供以下核心功能：
 | **翻译** | 划词翻译、段落翻译 |
 | **思维导图** | AI 自动生成 / 手动编辑 / PNG+Markdown 导出 |
 
-## 测试结果清单
-
-> 完整的测试结果汇总请参阅 [docs/TEST_RESULTS_SUMMARY.md](docs/TEST_RESULTS_SUMMARY.md)。
-
-### 构建验证
-
-| 验证项 | 命令 | 结果 |
-|--------|------|------|
-| TypeScript 编译 + Vite 生产构建 | `npm run build` | ✅ PASS |
-| 输出 | — | `dist/index.html` + `dist/assets/index-*.css` + `dist/assets/index-*.js` |
-
-### 功能验证
-
-| 功能 | 验证内容 | 状态 |
-|------|---------|------|
-| **NoteEditor** | `md-editor-rt` 组件集成、编辑/预览切换、`contentRef` 避免闭包 | ✅ PASS |
-| **新笔记模板** | 空笔记自动填充阅读模板（背景/研究问题/方法/实验/结论/局限） | ✅ PASS |
-| **高亮追加到笔记** | `annotation-excerpt` 事件触发，自动追加高亮文本到笔记 | ✅ PASS |
-| **AI 回答保存** | `ai-response-to-note` 事件触发，AI 回答追加到笔记 | ✅ PASS |
-| **翻译保存** | 翻译结果追加到笔记，格式：`**Translation (p.{n}):** {原文}> {译文}` | ✅ PASS |
-| **错误提示** | 401/超时/网络错误分类显示用户友好提示 | ✅ PASS |
-| **AI 对话上下文** | PDF 选中文本和页码作为上下文传递 | ✅ PASS |
-| **API 完整性** | `src/lib/api.ts` 25 个函数 → Rust 25 个 IPC 命令 | ✅ PASS |
-| **MindMap 集成** | ReaderView 右侧面板 MindMap Tab，MindMapCanvas 正常渲染 | ✅ PASS |
-| **React Flow 画布** | 节点拖拽、缩放、迷你地图、控件按钮栏 | ✅ PASS |
-| **AI 生成导图** | generate_mindmap 指令生成 6 节点导图 | ✅ PASS |
-| **手动编辑** | 双击编辑、添加子节点、删除节点、拖拽布局 | ✅ PASS |
-| **PNG 导出** | html-to-image 截图导出 | ✅ PASS |
-| **Markdown 导出** | nodes/edges 转缩进列表格式下载 | ✅ PASS |
-
-### 数据层验证
-
-| 验证项 | 说明 | 状态 |
-|--------|------|------|
-| **数据库迁移** | 4 个 SQL 迁移文件，6+3+1+1 张表 | ✅ PASS |
-| **Rust 后端** | 27 个 IPC 命令（db.rs/ai_commands.rs） | ✅ PASS |
-| **前端 API** | 25 个 `invoke` 函数 + 6 个 TypeScript 接口 | ✅ PASS |
-| **FTS5 搜索** | 标题/摘要/作者三字段索引，INSERT/UPDATE/DELETE 同步触发器 | ✅ PASS |
-| **级联删除** | 删除论文时自动清理 annotations/notes/tags/conversations/mindmaps/cache | ✅ PASS |
-| **AI 配置单例** | `CHECK(id=1)` 约束确保只有一条配置 | ✅ PASS |
-| **JSON 双写持久化** | `save_mindmap` 同时写入 SQLite 和 `mindmaps/{paper_id}.json` | ✅ PASS |
-| **笔记文件双写** | `update_note` 同时写入文件系统和 SQLite | ✅ PASS |
-| **PDF 导入 SHA256 去重** | 哈希去重，hash 命名避免冲突，单条失败不中断批量 | ✅ PASS |
-
-### 架构一致性验证
-
-| 验证项 | 说明 | 状态 |
-|--------|------|------|
-| **API 参数映射** | 前端 camelCase → Rust snake_case 自动转换 | ✅ PASS |
-| **路由结构** | `/` → LibraryList, `/reader/:id` → ReaderView, `/settings` → Settings | ✅ PASS |
-| **窗口配置** | 1200×800，最小 900×600，identifier: `com.papermate.app` | ✅ PASS |
-| **tauri.conf.json** | `bundle.targets=[dmg,app]`，`devtools=true` | ✅ PASS |
-| **Cargo.toml** | tauri 2.x, tauri-build, rusqlite, lopdf, sha2 | ✅ PASS |
-
-### 异常场景验证（详见 `docs/EXCEPTION_TESTING.md`）
-
-| # | 场景 | 结果 |
-|---|------|------|
-| 1 | 导入损坏/不存在 PDF → 返回 success:false，不崩溃 | ✅ PASS |
-| 2 | AI Key 错误 → 显示中文提示"请检查 API Key 配置" | ✅ PASS |
-| 3 | 网络断开 → 缓存有效，新请求返回 NetworkError | ⚠️ 部分 |
-| 4 | PDF 文件已删除 → 仅 console.error，无 UI 提示 | ❌ 失败 |
-| 5 | 重启后思维导图完整（JSON + SQLite 双写） | ✅ PASS |
-| 6 | 重启后笔记完整（文件 + SQLite 双写） | ✅ PASS |
-| 7 | AI 请求超时（30s）→ 显示 TimeoutError 提示 | ✅ PASS |
-
-**已知遗留问题**：
-- **高优先级**：PdfViewer.tsx 文件缺失时仅 console.error，缺 UI 提示
-- **中优先级**：AI 网络错误时前端无"离线模式"提示
-
-### 打包验证
-
-| 验证项 | 结果 |
-|--------|------|
-| `tauri.conf.json` bundle.targets=[dmg,app] | ✅ PASS |
-| devtools=true | ✅ PASS |
-| package.json 含 tauri/tauri dev/tauri build | ✅ PASS |
-| DMG 产物路径文档化 | ✅ PASS |
-| App 产物路径文档化 | ✅ PASS |
-| codesign 签名命令（见 BUILD_GUIDE.md） | ✅ PASS |
-
-## 文档索引
+## 文档
 
 | 文档 | 说明 |
 |------|------|
-| `README.md` | 本文件，项目概览与测试结果清单 |
-| `docs/TEST_RESULTS_SUMMARY.md` | 测试结果汇总（构建/功能/数据层/异常/打包） |
-| `docs/BUILD_GUIDE.md` | macOS Apple Silicon 打包详细步骤 |
-| `docs/EXCEPTION_TESTING.md` | 异常场景测试审查报告 |
-| `VERIFICATION.md` | 集成验证报告 |
-| `FINAL_BUILD_REPORT.md` | 构建报告（架构一致性验证） |
-| `FINAL_CHECKLIST.md` | 交付检查清单 |
-| `DATA_LAYER_VERIFICATION.md` | 数据层验证报告 |
+| `docs/BUILD_GUIDE.md` | macOS Apple Silicon 构建详细步骤与常见问题 |
 
 ## 版本信息
 
-- **当前版本**: v0.1.0
-- **构建日期**: 2026-04-29
+- **当前版本**: v1.0.0
 - **应用标识符**: com.papermate.app
