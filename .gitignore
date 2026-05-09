@@ -27,3 +27,11 @@ Thumbs.db
 
 # Tauri
 src-tauri/target/
+
+# Development docs (not for public release)
+VERIFICATION.md
+FINAL_BUILD_REPORT.md
+FINAL_CHECKLIST.md
+DATA_LAYER_VERIFICATION.md
+修改总结.md
+.claude/
