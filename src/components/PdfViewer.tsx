@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useCallback, useState } from "react"
 import * as pdfjsLib from "pdfjs-dist"
 import { Button } from "@/components/ui/button"
-import { ZoomIn, ZoomOut, Maximize } from "lucide-react"
+import { ZoomIn, ZoomOut, Maximize, Loader2 } from "lucide-react"
 import { usePdfViewerStore } from "@/lib/stores/pdf-viewer-store"
 import { useAnnotationStore } from "@/lib/stores/annotation-store"
 import { usePaperStore } from "@/lib/stores/paper-store"
@@ -67,6 +67,8 @@ function PdfViewerComponent({ paperId, filePath }: PdfViewerProps) {
   const [visualZoom, setVisualZoom] = useState(1)
   const [committedScale, setCommittedScale] = useState(1)
   const [zoomShellSize, setZoomShellSize] = useState({ width: 0, height: 0 })
+  const [loadingPhase, setLoadingPhase] = useState<"idle" | "reading" | "parsing" | "rendering">("idle")
+  const [loadingProgress, setLoadingProgress] = useState(0)
 
   const { totalPages, zoom, scaleMode,
     setTotalPages, setZoom, zoomIn, zoomOut, setFitWidth, setOutline, setCurrentPage
@@ -342,23 +344,34 @@ function PdfViewerComponent({ paperId, filePath }: PdfViewerProps) {
     if (pagesContainerRef.current) pagesContainerRef.current.replaceChildren()
     setTotalPages(0)
     setScrollPage(1)
+    setLoadingPhase("reading")
+    setLoadingProgress(0)
 
     try {
       const fileExists = await fsExists(filePath)
       if (!fileExists) {
         toast.error("PDF 文件无法加载", { description: "文件可能被移动或删除。" })
+        setLoadingPhase("idle")
         return
       }
 
       const data = await readFile(filePath)
+      if (loadSeq !== loadSeqRef.current) return
       const uint8 = new Uint8Array(data as unknown as ArrayBuffer)
-      const doc = await pdfjsLib.getDocument({
+      setLoadingPhase("parsing")
+      setLoadingProgress(0)
+      const loadingTask = pdfjsLib.getDocument({
         data: uint8 as unknown as ArrayBuffer,
         cMapUrl: `${PDFJS_ASSET_BASE}/cmaps/`,
         cMapPacked: true,
         standardFontDataUrl: `${PDFJS_ASSET_BASE}/standard_fonts/`,
         useSystemFonts: true,
-      }).promise
+      })
+      loadingTask.onProgress = ({ loaded, total }: { loaded: number; total: number }) => {
+        if (loadSeq !== loadSeqRef.current) return
+        if (total > 0) setLoadingProgress(Math.min(1, loaded / total))
+      }
+      const doc = await loadingTask.promise
       if (loadSeq !== loadSeqRef.current) {
         try { await doc.destroy() } catch {}
         return
@@ -385,6 +398,7 @@ function PdfViewerComponent({ paperId, filePath }: PdfViewerProps) {
       }
 
       if (loadSeq === loadSeqRef.current) {
+        setLoadingPhase("rendering")
         await setupPagePlaceholders()
         const restoredPage = Math.max(1, Math.min(usePdfViewerStore.getState().currentPage, doc.numPages))
         const restoredInfo = pagesRef.current.find((p) => p.pageNum === restoredPage)
@@ -392,10 +406,12 @@ function PdfViewerComponent({ paperId, filePath }: PdfViewerProps) {
           scrollContainerRef.current.scrollTop = Math.max(0, restoredInfo.wrapper.offsetTop - 20)
           setScrollPage(restoredPage)
         }
+        setLoadingPhase("idle")
       }
     } catch (e) {
       console.error("Failed to load PDF", e)
       toast.error("PDF 文件无法加载")
+      setLoadingPhase("idle")
     }
   }, [filePath, setTotalPages, setOutline, setupPagePlaceholders])
 
@@ -654,7 +670,35 @@ function PdfViewerComponent({ paperId, filePath }: PdfViewerProps) {
         </div>
       </div>
 
-      <div ref={scrollContainerRef} className="flex-1 overflow-auto bg-muted/30" style={{ WebkitOverflowScrolling: "touch" }}>
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto bg-muted/30 relative" style={{ WebkitOverflowScrolling: "touch" }}>
+        {loadingPhase !== "idle" && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/85 backdrop-blur-sm pointer-events-auto">
+            <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-lg border border-border bg-card shadow-lg min-w-[260px]">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <div className="text-sm font-medium text-foreground">
+                {loadingPhase === "reading" && "正在读取文件..."}
+                {loadingPhase === "parsing" && "正在解析 PDF..."}
+                {loadingPhase === "rendering" && "正在准备页面..."}
+              </div>
+              {loadingPhase === "parsing" && (
+                <div className="w-full">
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-150"
+                      style={{ width: `${Math.round(loadingProgress * 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 text-center">
+                    {Math.round(loadingProgress * 100)}%
+                  </div>
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground text-center">
+                {loadingPhase === "parsing" && "首次加载需下载字体资源，请稍候"}
+              </div>
+            </div>
+          </div>
+        )}
         <div
           ref={zoomShellRef}
           className="relative mx-auto"
