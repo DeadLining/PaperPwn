@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react"
+import { listen } from "@tauri-apps/api/event"
 import { useNavigate } from "react-router-dom"
 import { BookOpen, Search, Plus, Filter, SortAsc, Upload, FolderOpen, Folder, Edit, X, Link, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -87,13 +88,62 @@ export function LibraryList() {
     setIsDragOver(false)
   }, [])
 
+  // Listen for Tauri native drag-drop events (browser dataTransfer.files is empty in Tauri)
+  useEffect(() => {
+    let cancelled = false
+    const unlisteners: (() => void)[] = []
+
+    async function setup() {
+      const unlistenDrop = await listen<{ paths: string[]; position: { x: number; y: number } }>('tauri://drag-drop', async (event) => {
+        if (cancelled) return
+        setIsDragOver(false)
+        const paths = event.payload.paths.filter(p => p.toLowerCase().endsWith('.pdf'))
+        if (paths.length === 0) {
+          toast.info('Only PDF files can be imported')
+          return
+        }
+        setImporting(true)
+        try {
+          const results: ImportResult[] = await importPapers(paths)
+          const succeeded = results.filter(r => r.success).length
+          const duplicated = results.filter(r => r.error?.includes('duplicate') || r.error?.includes('already')).length
+          const failed = results.filter(r => !r.success).length
+          if (succeeded > 0) toast.success(`Imported ${succeeded} paper(s) successfully`)
+          if (duplicated > 0) toast.warning(`${duplicated} paper(s) were duplicates`)
+          if (failed > 0 && succeeded === 0) toast.error(`${failed} paper(s) failed to import`)
+          await loadPapers()
+          await loadTags()
+        } catch (err) {
+          toast.error('Import failed: ' + String(err))
+        } finally {
+          setImporting(false)
+        }
+      })
+      unlisteners.push(unlistenDrop)
+
+      const unlistenHover = await listen<{ position: { x: number; y: number } }>('tauri://drag-hover', () => {
+        if (!cancelled) setIsDragOver(true)
+      })
+      unlisteners.push(unlistenHover)
+
+      const unlistenLeave = await listen('tauri://drag-leave', () => {
+        if (!cancelled) setIsDragOver(false)
+      })
+      unlisteners.push(unlistenLeave)
+    }
+
+    setup()
+    return () => {
+      cancelled = true
+      unlisteners.forEach(fn => fn())
+    }
+  }, [loadPapers, loadTags])
+
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
-    setImporting(true)
-    toast.info("Drag-and-drop requires Tauri native event handling. Please use the Import button instead.")
-    setImporting(false)
+    // Browser drop is handled by Tauri native events above
   }, [])
 
   // Single file import
@@ -272,7 +322,7 @@ export function LibraryList() {
 
   return (
     <div
-      className="flex flex-col h-full"
+      className="relative flex flex-col h-full"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -398,9 +448,9 @@ export function LibraryList() {
         </div>
       )}
 
-      {/* Drop Zone Indicator */}
+      {/* Drop Zone Overlay */}
       {isDragOver && (
-        <div className="flex-1 flex items-center justify-center border-2 border-dashed border-primary bg-primary/5 rounded-lg m-4">
+        <div className="absolute inset-0 z-50 flex items-center justify-center border-2 border-dashed border-primary bg-primary/10 rounded-lg m-4 pointer-events-none">
           <div className="text-center">
             <Upload className="h-12 w-12 text-primary mb-2" />
             <p className="text-lg font-medium text-primary">Drop PDF files here to import</p>
@@ -410,8 +460,7 @@ export function LibraryList() {
       )}
 
       {/* Content Area */}
-      {!isDragOver && (
-        <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden">
           {loading && (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Loading...</p>
@@ -565,7 +614,6 @@ export function LibraryList() {
             </div>
           )}
         </div>
-      )}
 
       {/* Metadata Editor Dialog */}
       <MetadataEditorDialog
