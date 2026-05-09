@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaperMate</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px; background: #1e1e2e; color: #cdd6f4; }
+        h1 { color: #89b4fa; }
+        .status { padding: 10px; background: #313244; border-radius: 8px; margin-top: 16px; }
+        button { background: #89b4fa; color: #1e1e2e; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
+        button:hover { background: #b4befe; }
+    </style>
+</head>
+<body>
+    <h1>PaperMate</h1>
+    <p>Academic Paper Management System</p>
+    <div class="status" id="db-status">Database: Not initialized</div>
+    <button onclick="initDb()">Initialize Database</button>
+    <button onclick="getPapers()">Get Papers</button>
+    <button onclick="addSample()">Add Sample Paper</button>
+    <div id="papers-list" style="margin-top: 16px;"></div>
+
+    <script>
+        const { invoke } = window.__TAURI__.core;
+
+        async function initDb() {
+            try {
+                const result = await invoke('init_db');
+                document.getElementById('db-status').textContent = 'Database: ' + result;
+            } catch (e) {
+                document.getElementById('db-status').textContent = 'Error: ' + e;
+            }
+        }
+
+        async function getPapers() {
+            try {
+                const papers = await invoke('get_papers', { search: null, tag: null, readStatus: null, starred: null, limit: 50, offset: 0 });
+                const list = document.getElementById('papers-list');
+                list.innerHTML = papers.length === 0 ? 'No papers found.' :
+                    papers.map(p => '<div style="background:#313244;padding:8px;margin:4px;border-radius:4px">' +
+                        '<strong>' + p.title + '</strong> by ' + p.authors + ' (' + (p.year || 'N/A') + ')' +
+                        ' | Status: ' + p.read_status + ' | Starred: ' + p.starred +
+                        '</div>').join('');
+            } catch (e) {
+                document.getElementById('papers-list').textContent = 'Error: ' + e;
+            }
+        }
+
+        async function addSample() {
+            try {
+                const paper = await invoke('add_paper', {
+                    paper: { title: 'Attention Is All You Need', authors: 'Vaswani et al.', year: 2017, abstract: 'Transformer architecture', doi: '10.48550/arXiv.1706.03762', filePath: '/papers/transformer.pdf', fileHash: 'abc123' }
+                });
+                document.getElementById('papers-list').textContent = 'Added: ' + paper.title;
+                getPapers();
+            } catch (e) {
+                document.getElementById('papers-list').textContent = 'Error: ' + e;
+            }
+        }
+    </script>
+</body>
+</html>
