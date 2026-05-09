@@ -7,7 +7,7 @@
 - **框架**: Tauri 2.x
 - **前端**: React + TypeScript + Vite
 - **样式**: Tailwind CSS + shadcn/ui
-- **数据库**: SQLite
+- **数据存储**: 文件系统（JSON）
 
 ## 环境要求
 
@@ -104,17 +104,11 @@ PaperMate/
 │   └── main.tsx                   # 应用入口
 ├── src-tauri/                     # Rust 后端
 │   ├── src/                       # Rust 源码
-│   │   ├── main.rs                # 应用入口 & 生命周期
-│   │   ├── lib.rs                 # 库模块（import_papers, delete_paper）
-│   │   ├── db.rs                  # SQLite 初始化与 27 个 IPC 命令
-│   │   ├── ai_commands.rs         # AI 生成/对话/翻译/缓存指令
+│   │   ├── main.rs                # 应用入口
+│   │   ├── lib.rs                 # 入口与命令注册
+│   │   ├── library_fs.rs          # 文件系统库管理（论文/笔记/标注/AI/Outline 等命令）
 │   │   ├── metadata.rs            # PDF 元数据提取
 │   │   └── files.rs               # SHA256 哈希、文件操作
-│   ├── migrations/                # 数据库迁移
-│   │   ├── 001_initial_schema.sql # 初始 schema（6张表）
-│   │   ├── 002_add_tables.sql     # 扩展表（ai_conversations/mind_maps/ai_config）
-│   │   ├── 003_fts5.sql           # FTS5 全文搜索
-│   │   └── 004_fix_constraints.sql# 约束修复
 │   ├── capabilities/              # Tauri 权限配置
 │   │   └── default.json           # 默认权限声明
 │   ├── build.rs                   # Tauri 构建脚本
@@ -122,9 +116,7 @@ PaperMate/
 │   └── tauri.conf.json            # Tauri 窗口与应用配置
 ├── public/                        # 静态资源
 ├── docs/                          # 文档
-│   ├── BUILD_GUIDE.md            # macOS 打包指南
-│   ├── TEST_RESULTS_SUMMARY.md   # 测试结果汇总（本文档索引）
-│   └── EXCEPTION_TESTING.md      # 异常场景测试
+│   └── BUILD_GUIDE.md            # macOS 打包指南
 ├── package.json                   # Node.js 依赖与脚本
 ├── vite.config.ts                 # Vite 构建配置
 ├── tsconfig.json                  # TypeScript 配置
@@ -162,9 +154,7 @@ PaperMate/
 ├── notes/              # Markdown 笔记
 ├── annotations/        # 标注数据（JSON）
 ├── mindmaps/           # 思维导图（JSON）
-├── ai-cache/           # AI 请求/响应缓存
-├── indexes/            # 全文搜索索引
-└── library.db          # SQLite 主数据库
+└── ai-cache/           # AI 请求/响应缓存
 ```
 
 | 目录 | 说明 |
@@ -172,10 +162,8 @@ PaperMate/
 | `papers/` | 存储用户导入的 PDF 文件，按 SHA256 哈希命名 |
 | `notes/` | 用户撰写的 Markdown 笔记，按文献 ID 组织 |
 | `annotations/` | PDF 标注数据（高亮、批注等），JSON 格式存储 |
-| `mindmaps/` | 思维导图数据文件，JSON 格式，支持 SQLite + 文件双写 |
+| `mindmaps/` | 思维导图数据文件，JSON 格式 |
 | `ai-cache/` | AI 请求与响应缓存，减少重复 API 调用 |
-| `indexes/` | 全文搜索（FTS5）索引文件 |
-| `library.db` | SQLite 主数据库，存储文献元数据、标签、阅读进度、AI 配置等 |
 
 ## 功能概述
 
@@ -185,7 +173,7 @@ PaperMate 提供以下核心功能：
 |------|------|
 | **文献导入** | 拖拽/批量导入 PDF，自动 SHA256 去重 |
 | **元数据识别** | 自动提取论文标题/作者/年份/DOI/摘要，文件名兜底 |
-| **文献管理** | 标签分类、全文搜索（FTS5）、多维度排序、星标收藏 |
+| **文献管理** | 标签分类、全文搜索、多维度排序、星标收藏 |
 | **PDF 阅读** | 翻页浏览、缩放适配、目录导航、阅读进度记忆 |
 | **标注** | 高亮标记、文字批注、颜色分类、标注导出 |
 | **Markdown 笔记** | 为每篇文献撰写 Markdown 笔记，含阅读模板 |
