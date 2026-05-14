@@ -1,3 +1,4 @@
+use lopdf::Document;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -224,15 +225,33 @@ pub fn list_papers(app: &AppHandle, params: GetPapersParams) -> Result<Vec<Paper
 
 pub fn update_paper(app: &AppHandle, update: PaperUpdate) -> Result<PaperMetadata, String> {
     let mut paper = read_paper(app, &update.id)?;
-    if let Some(title) = update.title { paper.title = title; }
-    if let Some(authors) = update.authors { paper.authors = authors; }
-    if update.year.is_some() { paper.year = update.year; }
-    if let Some(abstract_) = update.abstract_ { paper.abstract_ = abstract_; }
-    if let Some(doi) = update.doi { paper.doi = doi; }
-    if let Some(read_status) = update.read_status { paper.read_status = read_status; }
-    if let Some(starred) = update.starred { paper.starred = starred; }
-    if update.last_page.is_some() { paper.last_page = update.last_page; }
-    if let Some(folder_ids) = update.folder_ids { paper.folder_ids = folder_ids; }
+    if let Some(title) = update.title {
+        paper.title = title;
+    }
+    if let Some(authors) = update.authors {
+        paper.authors = authors;
+    }
+    if update.year.is_some() {
+        paper.year = update.year;
+    }
+    if let Some(abstract_) = update.abstract_ {
+        paper.abstract_ = abstract_;
+    }
+    if let Some(doi) = update.doi {
+        paper.doi = doi;
+    }
+    if let Some(read_status) = update.read_status {
+        paper.read_status = read_status;
+    }
+    if let Some(starred) = update.starred {
+        paper.starred = starred;
+    }
+    if update.last_page.is_some() {
+        paper.last_page = update.last_page;
+    }
+    if let Some(folder_ids) = update.folder_ids {
+        paper.folder_ids = folder_ids;
+    }
     write_paper(app, &paper)?;
     Ok(paper)
 }
@@ -245,10 +264,12 @@ pub fn delete_paper(app: &AppHandle, paper_id: &str) -> Result<String, String> {
     let trash_dir = library_dir(app)?.join("trash");
     fs::create_dir_all(&trash_dir).map_err(|e| e.to_string())?;
     let dest = trash_dir.join(format!("{}-{}", paper_id, now_string()));
-    fs::rename(&dir, &dest).or_else(|_| {
-        fs::remove_dir_all(&dir)?;
-        Ok::<(), std::io::Error>(())
-    }).map_err(|e| e.to_string())?;
+    fs::rename(&dir, &dest)
+        .or_else(|_| {
+            fs::remove_dir_all(&dir)?;
+            Ok::<(), std::io::Error>(())
+        })
+        .map_err(|e| e.to_string())?;
     Ok(format!("Paper {} moved to trash", paper_id))
 }
 
@@ -258,7 +279,11 @@ fn collect_pdf_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
         let path = entry.path();
         if path.is_dir() {
             collect_pdf_files(&path, out)?;
-        } else if path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("pdf")) {
+        } else if path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("pdf"))
+        {
             out.push(path);
         }
     }
@@ -273,14 +298,23 @@ fn file_name_for_pdf(src: &Path) -> String {
         .to_string()
 }
 
-pub fn import_papers(app: &AppHandle, source_paths: Vec<String>, folder_id: Option<String>) -> Result<Vec<ImportResult>, String> {
+pub fn import_papers(
+    app: &AppHandle,
+    source_paths: Vec<String>,
+    folder_id: Option<String>,
+) -> Result<Vec<ImportResult>, String> {
     let mut results = Vec::new();
     let mut import_paths = Vec::new();
 
     for source_path in &source_paths {
         let src = PathBuf::from(source_path);
         if !src.exists() {
-            results.push(ImportResult { source_path: source_path.clone(), success: false, paper_id: None, error: Some(format!("Source file not found: {}", source_path)) });
+            results.push(ImportResult {
+                source_path: source_path.clone(),
+                success: false,
+                paper_id: None,
+                error: Some(format!("Source file not found: {}", source_path)),
+            });
             continue;
         }
         if src.is_dir() {
@@ -290,24 +324,53 @@ pub fn import_papers(app: &AppHandle, source_paths: Vec<String>, folder_id: Opti
         }
     }
 
-    let existing = list_papers(app, GetPapersParams { search: None, read_status: None, starred: None, folder_id: None, limit: None, offset: None })?;
+    let existing = list_papers(
+        app,
+        GetPapersParams {
+            search: None,
+            read_status: None,
+            starred: None,
+            folder_id: None,
+            limit: None,
+            offset: None,
+        },
+    )?;
 
     for src in import_paths {
         let source_path = src.to_string_lossy().to_string();
-        if !src.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("pdf")) {
-            results.push(ImportResult { source_path, success: false, paper_id: None, error: Some("Only PDF files can be imported".to_string()) });
+        if !src
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("pdf"))
+        {
+            results.push(ImportResult {
+                source_path,
+                success: false,
+                paper_id: None,
+                error: Some("Only PDF files can be imported".to_string()),
+            });
             continue;
         }
 
         let file_hash = match crate::files::compute_file_hash(&src) {
             Ok(hash) => hash,
             Err(e) => {
-                results.push(ImportResult { source_path, success: false, paper_id: None, error: Some(e) });
+                results.push(ImportResult {
+                    source_path,
+                    success: false,
+                    paper_id: None,
+                    error: Some(e),
+                });
                 continue;
             }
         };
         if existing.iter().any(|paper| paper.file_hash == file_hash) {
-            results.push(ImportResult { source_path, success: false, paper_id: None, error: Some("Duplicate file (same hash already imported)".to_string()) });
+            results.push(ImportResult {
+                source_path,
+                success: false,
+                paper_id: None,
+                error: Some("Duplicate file (same hash already imported)".to_string()),
+            });
             continue;
         }
 
@@ -318,9 +381,17 @@ pub fn import_papers(app: &AppHandle, source_paths: Vec<String>, folder_id: Opti
         let dest_path = dir.join(&pdf_name);
         fs::copy(&src, &dest_path).map_err(|e| e.to_string())?;
 
-        let fallback_title = src.file_stem().unwrap_or_default().to_string_lossy().to_string();
+        let fallback_title = src
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         let meta = crate::metadata::extract_metadata_from_pdf(&dest_path.to_string_lossy());
-        let title = if meta.title.trim().is_empty() { fallback_title } else { meta.title };
+        let title = if meta.title.trim().is_empty() {
+            fallback_title
+        } else {
+            meta.title
+        };
         let now = now_string();
         let paper = PaperMetadata {
             id: paper_id.clone(),
@@ -339,7 +410,12 @@ pub fn import_papers(app: &AppHandle, source_paths: Vec<String>, folder_id: Opti
             folder_ids: folder_id.clone().into_iter().collect(),
         };
         write_paper(app, &paper)?;
-        results.push(ImportResult { source_path, success: true, paper_id: Some(paper_id), error: None });
+        results.push(ImportResult {
+            source_path,
+            success: true,
+            paper_id: Some(paper_id),
+            error: None,
+        });
     }
 
     Ok(results)
@@ -353,13 +429,21 @@ fn normalize_paper_url(input: &str) -> Result<String, String> {
 
     if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
         if trimmed.contains("arxiv.org/abs/") {
-            return Ok(trimmed.replace("/abs/", "/pdf/") + if trimmed.ends_with(".pdf") { "" } else { ".pdf" });
+            return Ok(trimmed.replace("/abs/", "/pdf/")
+                + if trimmed.ends_with(".pdf") {
+                    ""
+                } else {
+                    ".pdf"
+                });
         }
         return Ok(trimmed.to_string());
     }
 
     let arxiv_id = trimmed.strip_prefix("arxiv:").unwrap_or(trimmed);
-    if arxiv_id.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '/')) {
+    if arxiv_id
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '/'))
+    {
         return Ok(format!("https://arxiv.org/pdf/{}.pdf", arxiv_id));
     }
 
@@ -380,27 +464,49 @@ fn file_name_from_url(url: &str) -> String {
     }
 }
 
-pub async fn import_paper_from_url(app: &AppHandle, input: String, folder_id: Option<String>, proxy_url: Option<String>) -> Result<ImportResult, String> {
+pub async fn import_paper_from_url(
+    app: &AppHandle,
+    input: String,
+    folder_id: Option<String>,
+    proxy_url: Option<String>,
+) -> Result<ImportResult, String> {
     let url = normalize_paper_url(&input)?;
     let mut client_builder = reqwest::Client::builder();
     if let Some(proxy_url) = proxy_url.filter(|value| !value.trim().is_empty()) {
-        let proxy = reqwest::Proxy::all(proxy_url.trim()).map_err(|e| format!("Invalid proxy URL: {}", e))?;
+        let proxy = reqwest::Proxy::all(proxy_url.trim())
+            .map_err(|e| format!("Invalid proxy URL: {}", e))?;
         client_builder = client_builder.proxy(proxy);
     }
-    let client = client_builder.build().map_err(|e| format!("Failed to build HTTP client: {}", e))?;
-    let response = client.get(&url).send().await.map_err(|e| format!("Failed to download paper: {}", e))?;
+    let client = client_builder
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download paper: {}", e))?;
     if !response.status().is_success() {
-        return Err(format!("Download failed with HTTP status {}", response.status()));
+        return Err(format!(
+            "Download failed with HTTP status {}",
+            response.status()
+        ));
     }
 
-    let bytes = response.bytes().await.map_err(|e| format!("Failed to read downloaded paper: {}", e))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read downloaded paper: {}", e))?;
     if bytes.is_empty() {
         return Err("Downloaded file is empty".to_string());
     }
 
     let tmp_dir = library_dir(app)?.join("cache").join("downloads");
     fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
-    let tmp_path = tmp_dir.join(format!("{}-{}", Uuid::new_v4().simple(), file_name_from_url(&url)));
+    let tmp_path = tmp_dir.join(format!(
+        "{}-{}",
+        Uuid::new_v4().simple(),
+        file_name_from_url(&url)
+    ));
     fs::write(&tmp_path, &bytes).map_err(|e| format!("Failed to save downloaded paper: {}", e))?;
 
     let mut results = import_papers(app, vec![tmp_path.to_string_lossy().to_string()], folder_id)?;
@@ -439,12 +545,21 @@ pub fn create_folder(app: &AppHandle, name: String) -> Result<FolderMetadata, St
     }
     let id = format!("folder_{}", Uuid::new_v4().simple());
     let now = now_string();
-    let folder = FolderMetadata { id: id.clone(), name, created_at: now.clone(), updated_at: now };
+    let folder = FolderMetadata {
+        id: id.clone(),
+        name,
+        created_at: now.clone(),
+        updated_at: now,
+    };
     write_json(&folders_dir(app)?.join(&id).join("metadata.json"), &folder)?;
     Ok(folder)
 }
 
-pub fn rename_folder(app: &AppHandle, folder_id: String, name: String) -> Result<FolderMetadata, String> {
+pub fn rename_folder(
+    app: &AppHandle,
+    folder_id: String,
+    name: String,
+) -> Result<FolderMetadata, String> {
     if name.trim().is_empty() {
         return Err("Folder name cannot be empty".to_string());
     }
@@ -461,7 +576,17 @@ pub fn delete_folder(app: &AppHandle, folder_id: String) -> Result<String, Strin
     if dir.exists() {
         fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
     }
-    for mut paper in list_papers(app, GetPapersParams { search: None, read_status: None, starred: None, folder_id: None, limit: None, offset: None })? {
+    for mut paper in list_papers(
+        app,
+        GetPapersParams {
+            search: None,
+            read_status: None,
+            starred: None,
+            folder_id: None,
+            limit: None,
+            offset: None,
+        },
+    )? {
         paper.folder_ids.retain(|id| id != &folder_id);
         write_paper(app, &paper)?;
     }
@@ -469,15 +594,21 @@ pub fn delete_folder(app: &AppHandle, folder_id: String) -> Result<String, Strin
 }
 
 #[tauri::command]
-pub fn get_recent_papers(app: AppHandle, limit: Option<usize>) -> Result<Vec<PaperMetadata>, String> {
-    let mut papers = list_papers(&app, GetPapersParams {
-        search: None,
-        read_status: None,
-        starred: None,
-        folder_id: None,
-        limit: None,
-        offset: None,
-    })?;
+pub fn get_recent_papers(
+    app: AppHandle,
+    limit: Option<usize>,
+) -> Result<Vec<PaperMetadata>, String> {
+    let mut papers = list_papers(
+        &app,
+        GetPapersParams {
+            search: None,
+            read_status: None,
+            starred: None,
+            folder_id: None,
+            limit: None,
+            offset: None,
+        },
+    )?;
     // Sort by last_opened_at (if available) or import_time
     papers.sort_by(|a, b| {
         let a_time = a.last_opened_at.as_ref().unwrap_or(&a.import_time);
@@ -503,13 +634,20 @@ fn read_annotations(app: &AppHandle, paper_id: &str) -> Result<Vec<AnnotationRec
     read_json(&path)
 }
 
-fn write_annotations(app: &AppHandle, paper_id: &str, annotations: &[AnnotationRecord]) -> Result<(), String> {
+fn write_annotations(
+    app: &AppHandle,
+    paper_id: &str,
+    annotations: &[AnnotationRecord],
+) -> Result<(), String> {
     let path = annotations_path(app, paper_id)?;
     write_json(&path, annotations)
 }
 
 #[tauri::command]
-pub fn get_annotations_for_paper(app: AppHandle, paper_id: String) -> Result<Vec<AnnotationRecord>, String> {
+pub fn get_annotations_for_paper(
+    app: AppHandle,
+    paper_id: String,
+) -> Result<Vec<AnnotationRecord>, String> {
     read_annotations(&app, &paper_id)
 }
 
@@ -549,7 +687,8 @@ pub fn update_annotation(
     rects: Option<Vec<Rect>>,
 ) -> Result<AnnotationRecord, String> {
     let mut annotations = read_annotations(&app, &paper_id)?;
-    let annotation = annotations.iter_mut()
+    let annotation = annotations
+        .iter_mut()
         .find(|a| a.id == annotation_id)
         .ok_or_else(|| format!("Annotation not found: {}", annotation_id))?;
     if let Some(c) = comment {
@@ -567,7 +706,11 @@ pub fn update_annotation(
 }
 
 #[tauri::command]
-pub fn delete_annotation(app: AppHandle, paper_id: String, annotation_id: String) -> Result<(), String> {
+pub fn delete_annotation(
+    app: AppHandle,
+    paper_id: String,
+    annotation_id: String,
+) -> Result<(), String> {
     let mut annotations = read_annotations(&app, &paper_id)?;
     let original_len = annotations.len();
     annotations.retain(|a| a.id != annotation_id);
@@ -576,6 +719,225 @@ pub fn delete_annotation(app: AppHandle, paper_id: String, annotation_id: String
     }
     write_annotations(&app, &paper_id, &annotations)?;
     Ok(())
+}
+
+fn extract_pdf_pages(pdf_path: &str) -> Vec<(u32, String)> {
+    let Ok(doc) = Document::load(pdf_path) else {
+        return Vec::new();
+    };
+    doc.get_pages()
+        .keys()
+        .filter_map(|page| {
+            let text = doc.extract_text(&[*page]).unwrap_or_default();
+            let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+            if normalized.is_empty() {
+                None
+            } else {
+                Some((*page, normalized))
+            }
+        })
+        .collect()
+}
+
+fn extract_figure_number(text: &str) -> Option<String> {
+    let lower = text.to_lowercase();
+    for marker in ["figure", "fig.", "fig", "图"] {
+        let mut start = 0;
+        while let Some(pos) = lower[start..].find(marker) {
+            let idx = start + pos + marker.len();
+            let rest = &lower[idx..];
+            let digits: String = rest
+                .chars()
+                .skip_while(|c| c.is_whitespace() || *c == ':' || *c == '：')
+                .take_while(|c| c.is_ascii_digit())
+                .collect();
+            if !digits.is_empty() {
+                return Some(digits);
+            }
+            start = idx;
+        }
+    }
+    None
+}
+
+fn query_terms(question: &str) -> Vec<String> {
+    question
+        .split(|c: char| !c.is_alphanumeric() && c != '-')
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| s.chars().count() >= 3)
+        .filter(|s| {
+            !matches!(
+                s.as_str(),
+                "what"
+                    | "why"
+                    | "how"
+                    | "the"
+                    | "and"
+                    | "for"
+                    | "with"
+                    | "about"
+                    | "figure"
+                    | "fig"
+                    | "page"
+            )
+        })
+        .collect()
+}
+
+fn requested_scope(context: Option<&str>) -> Option<ContextScope> {
+    let ctx = context?;
+    for line in ctx.lines() {
+        let line = line.trim();
+        if line == "scope:full" {
+            return Some(ContextScope::Full);
+        }
+        if let Some(page) = line.strip_prefix("scope:page:") {
+            if let Ok(page) = page.trim().parse::<u32>() {
+                return Some(ContextScope::Page(page));
+            }
+        }
+    }
+    None
+}
+
+enum ContextScope {
+    Full,
+    Page(u32),
+}
+
+fn select_pdf_context(
+    pdf_path: &str,
+    question: &str,
+    context: Option<&str>,
+    max_chars: usize,
+) -> String {
+    let pages = extract_pdf_pages(pdf_path);
+    if pages.is_empty() {
+        return String::new();
+    }
+
+    let scope = requested_scope(context);
+    if let Some(ContextScope::Page(target_page)) = scope {
+        let mut out = String::new();
+        if let Some(ctx) = context.filter(|c| !c.trim().is_empty()) {
+            out.push_str("Reader context:\n");
+            out.push_str(ctx);
+            out.push_str("\n\n");
+        }
+        out.push_str("Requested PDF page excerpt:\n");
+        if let Some((page, text)) = pages.into_iter().find(|(page, _)| *page == target_page) {
+            let snippet: String = text.chars().take(max_chars).collect();
+            out.push_str(&format!("\n[Page {}]\n{}\n", page, snippet));
+        } else {
+            out.push_str(&format!(
+                "\n[Page {}] No extractable text found.\n",
+                target_page
+            ));
+        }
+        return out;
+    }
+
+    if matches!(scope, Some(ContextScope::Full)) {
+        let mut out = String::new();
+        if let Some(ctx) = context.filter(|c| !c.trim().is_empty()) {
+            out.push_str("Reader context:\n");
+            out.push_str(ctx);
+            out.push_str("\n\n");
+        }
+        out.push_str(
+            "Full-paper PDF excerpts, ordered by page and capped to fit the model context:\n",
+        );
+        for (page, text) in pages {
+            if out.chars().count() >= max_chars {
+                break;
+            }
+            let remaining = max_chars.saturating_sub(out.chars().count());
+            let snippet: String = text.chars().take(remaining.min(2500)).collect();
+            out.push_str(&format!("\n[Page {}]\n{}\n", page, snippet));
+        }
+        return out;
+    }
+
+    let terms = query_terms(question);
+    let figure_no = extract_figure_number(question);
+    let mut scored: Vec<(i64, u32, String)> = pages
+        .into_iter()
+        .map(|(page, text)| {
+            let lower = text.to_lowercase();
+            let mut score = 0_i64;
+            for term in &terms {
+                if lower.contains(term) {
+                    score += 3;
+                }
+            }
+            if let Some(no) = &figure_no {
+                for pattern in [
+                    format!("figure {}", no),
+                    format!("figure{}", no),
+                    format!("fig. {}", no),
+                    format!("fig.{}", no),
+                    format!("fig {}", no),
+                    format!("图{}", no),
+                    format!("图 {}", no),
+                ] {
+                    if lower.contains(&pattern) {
+                        score += 50;
+                    }
+                }
+            }
+            (score, page, text)
+        })
+        .collect();
+
+    scored.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+    let mut selected: Vec<(u32, String)> = scored
+        .iter()
+        .filter(|(score, _, _)| *score > 0)
+        .take(6)
+        .map(|(_, page, text)| (*page, text.clone()))
+        .collect();
+
+    if selected.is_empty() {
+        selected = scored
+            .iter()
+            .take(8)
+            .map(|(_, page, text)| (*page, text.clone()))
+            .collect();
+    }
+    selected.sort_by_key(|(page, _)| *page);
+
+    let mut out = String::new();
+    if let Some(ctx) = context.filter(|c| !c.trim().is_empty()) {
+        out.push_str(
+            "Reader context:
+",
+        );
+        out.push_str(ctx);
+        out.push_str(
+            "
+
+",
+        );
+    }
+    out.push_str(
+        "Relevant full-text excerpts extracted from the PDF:
+",
+    );
+    for (page, text) in selected {
+        if out.chars().count() >= max_chars {
+            break;
+        }
+        let remaining = max_chars.saturating_sub(out.chars().count());
+        let snippet: String = text.chars().take(remaining.min(3500)).collect();
+        out.push_str(&format!(
+            "
+[Page {}]
+{}
+",
+            page, snippet
+        ));
+    }
+    out
 }
 
 // ---- AI Functions ----
@@ -590,10 +952,13 @@ async fn call_ai_api(
 
     let mut client_builder = Client::builder();
     if !config.proxy_url.is_empty() {
-        let proxy = reqwest::Proxy::all(&config.proxy_url).map_err(|e| format!("Invalid proxy URL: {}", e))?;
+        let proxy = reqwest::Proxy::all(&config.proxy_url)
+            .map_err(|e| format!("Invalid proxy URL: {}", e))?;
         client_builder = client_builder.proxy(proxy);
     }
-    let client = client_builder.build().map_err(|e| format!("Failed to build HTTP client: {}", e))?;
+    let client = client_builder
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
 
     let request_body = json!({
         "model": config.model_name,
@@ -606,7 +971,10 @@ async fn call_ai_api(
     });
 
     let response = client
-        .post(&format!("{}/chat/completions", config.api_base.trim_end_matches('/')))
+        .post(&format!(
+            "{}/chat/completions",
+            config.api_base.trim_end_matches('/')
+        ))
         .header("Authorization", format!("Bearer {}", config.api_key))
         .header("Content-Type", "application/json")
         .json(&request_body)
@@ -616,7 +984,10 @@ async fn call_ai_api(
 
     if !response.status().is_success() {
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         return Err(format!("AI API error {}: {}", status, error_text));
     }
 
@@ -632,12 +1003,25 @@ async fn call_ai_api(
 }
 
 #[tauri::command]
-pub async fn ai_generate_summary(app: AppHandle, paper_id: String, config: AiConfig) -> Result<String, String> {
+pub async fn ai_generate_summary(
+    app: AppHandle,
+    paper_id: String,
+    context: Option<String>,
+    config: AiConfig,
+) -> Result<String, String> {
     let paper = read_paper(&app, &paper_id)?;
-    let system_prompt = "You are a helpful assistant that summarizes academic papers. Provide a concise summary in Chinese.";
+    let pdf_context = context.unwrap_or_else(|| {
+        select_pdf_context(
+            &paper.file_path,
+            "summary abstract introduction conclusion",
+            None,
+            18000,
+        )
+    });
+    let system_prompt = "You are a helpful assistant that summarizes academic papers. Provide a concise summary in Chinese. Use the provided PDF text when available and cite page numbers as Page N.";
     let user_prompt = format!(
-        "Please summarize the following paper:\n\nTitle: {}\n\nAbstract: {}",
-        paper.title, paper.abstract_
+        "Please summarize the following paper using its PDF text.\n\nTitle: {}\n\nAbstract: {}\n\nPDF text/context:\n{}",
+        paper.title, paper.abstract_, pdf_context
     );
     call_ai_api(&system_prompt, &user_prompt, &config).await
 }
@@ -668,18 +1052,12 @@ pub async fn ai_chat(
     config: AiConfig,
 ) -> Result<String, String> {
     let paper = read_paper(&app, &paper_id)?;
-    let system_prompt = "You are a helpful assistant that answers questions about academic papers. Answer in Chinese. When referencing specific content from the paper, always include the page number using the format \"Page N\" (e.g., \"as shown on Page 3\", \"see Page 7 for details\"). This helps readers locate the original text.";
-    let user_prompt = if let Some(ctx) = context {
-        format!(
-            "Based on the paper \"{}\", answer the following question.\n\nContext: {}\n\nQuestion: {}",
-            paper.title, ctx, question
-        )
-    } else {
-        format!(
-            "Based on the paper \"{}\", answer the following question:\n\n{}",
-            paper.title, question
-        )
-    };
+    let system_prompt = "You are a helpful assistant that answers questions about academic papers. Answer in Chinese. Base your answer on the provided PDF excerpts, not just the title. If the excerpts do not contain enough evidence, say so. When referencing specific content from the paper, include the page number using the format \"Page N\".";
+    let pdf_context = select_pdf_context(&paper.file_path, &question, context.as_deref(), 22000);
+    let user_prompt = format!(
+        "Based on the paper \"{}\", answer the following question.\n\nQuestion: {}\n\nPDF context:\n{}",
+        paper.title, question, pdf_context
+    );
     call_ai_api(&system_prompt, &user_prompt, &config).await
 }
 
@@ -692,7 +1070,8 @@ pub async fn ai_translate_text(
     config: AiConfig,
 ) -> Result<String, String> {
     let paper = read_paper(&app, &paper_id)?;
-    let system_prompt = "You are a helpful assistant that translates academic text. Translate to Chinese.";
+    let system_prompt =
+        "You are a helpful assistant that translates academic text. Translate to Chinese.";
     let user_prompt = format!(
         "Translate the following text from page {} of the paper \"{}\" to Chinese:\n\n{}",
         page, paper.title, text
@@ -729,7 +1108,11 @@ pub fn get_mindmap(app: AppHandle, paper_id: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn generate_mindmap(app: AppHandle, paper_id: String, config: AiConfig) -> Result<String, String> {
+pub async fn generate_mindmap(
+    app: AppHandle,
+    paper_id: String,
+    config: AiConfig,
+) -> Result<String, String> {
     let paper = read_paper(&app, &paper_id)?;
     let system_prompt = "You are a helpful assistant that generates mind maps for academic papers. Return ONLY valid JSON, no markdown, no code blocks.";
     let user_prompt = format!(
@@ -738,7 +1121,13 @@ pub async fn generate_mindmap(app: AppHandle, paper_id: String, config: AiConfig
     );
     let mindmap_json = call_ai_api(&system_prompt, &user_prompt, &config).await?;
     // Clean up markdown code blocks if present
-    let cleaned = mindmap_json.trim().trim_start_matches("```json").trim_start_matches("```").trim_end_matches("```").trim().to_string();
+    let cleaned = mindmap_json
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim()
+        .to_string();
     // Validate JSON
     if let Err(_) = serde_json::from_str::<serde_json::Value>(&cleaned) {
         return Err("AI returned invalid JSON for mindmap".to_string());
@@ -748,7 +1137,11 @@ pub async fn generate_mindmap(app: AppHandle, paper_id: String, config: AiConfig
 }
 
 #[tauri::command]
-pub async fn generate_outline(app: AppHandle, paper_id: String, config: AiConfig) -> Result<String, String> {
+pub async fn generate_outline(
+    app: AppHandle,
+    paper_id: String,
+    config: AiConfig,
+) -> Result<String, String> {
     let paper = read_paper(&app, &paper_id)?;
     let system_prompt = "You are a helpful assistant that generates outlines for academic papers. Return the outline as a JSON array of sections.";
     let user_prompt = format!(
@@ -764,7 +1157,9 @@ pub fn get_generated_outline(app: AppHandle, paper_id: String) -> Result<Option<
     if !path.exists() {
         return Ok(None);
     }
-    fs::read_to_string(&path).map_err(|e| e.to_string()).map(Some)
+    fs::read_to_string(&path)
+        .map_err(|e| e.to_string())
+        .map(Some)
 }
 
 // ---- Notes & Conversations ----
@@ -805,7 +1200,11 @@ pub fn get_conversations(app: AppHandle, paper_id: String) -> Result<String, Str
 }
 
 #[tauri::command]
-pub fn save_conversation(app: AppHandle, paper_id: String, content_json: String) -> Result<(), String> {
+pub fn save_conversation(
+    app: AppHandle,
+    paper_id: String,
+    content_json: String,
+) -> Result<(), String> {
     let path = conversations_path(&app, &paper_id)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;

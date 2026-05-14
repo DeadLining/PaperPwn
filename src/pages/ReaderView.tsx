@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
 import { ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,17 @@ interface TranslationRequest {
   nonce: number
 }
 
+function clampRightPanelWidth(width: number, viewportWidth = window.innerWidth): number {
+  const minWidth = viewportWidth < 900 ? 280 : 360
+  const maxWidth = Math.max(minWidth, Math.min(720, Math.floor(viewportWidth * 0.42)))
+  return Math.max(minWidth, Math.min(maxWidth, width))
+}
+
+function getDefaultRightPanelWidth(): number {
+  if (typeof window === "undefined") return 520
+  return clampRightPanelWidth(Math.floor(window.innerWidth * 0.32))
+}
+
 function formatAuthors(authors: string): string {
   const names = authors
     .split(/[,;，；]/)
@@ -44,8 +55,9 @@ export function ReaderView() {
   const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [rightTab, setRightTab] = useState('annotations')
-  const [rightPanelWidth, setRightPanelWidth] = useState(520)
+  const [rightPanelWidth, setRightPanelWidth] = useState(getDefaultRightPanelWidth)
   const [isResizing, setIsResizing] = useState(false)
+  const hasManuallyResizedRightPanel = useRef(false)
   const [aiTab, setAiTab] = useState('chat')
   const [translationRequest, setTranslationRequest] = useState<TranslationRequest | null>(null)
   const [outlineGenerating, setOutlineGenerating] = useState(false)
@@ -140,14 +152,28 @@ export function ReaderView() {
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault()
+    hasManuallyResizedRightPanel.current = true
     setIsResizing(true)
   }
+
+  useEffect(() => {
+    const handleWindowResize = () => {
+      setRightPanelWidth((current) => (
+        hasManuallyResizedRightPanel.current
+          ? clampRightPanelWidth(current)
+          : getDefaultRightPanelWidth()
+      ))
+    }
+
+    window.addEventListener('resize', handleWindowResize)
+    return () => window.removeEventListener('resize', handleWindowResize)
+  }, [])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return
       const newWidth = window.innerWidth - e.clientX
-      setRightPanelWidth(Math.max(300, Math.min(800, newWidth)))
+      setRightPanelWidth(clampRightPanelWidth(newWidth))
     }
 
     const handleMouseUp = () => {

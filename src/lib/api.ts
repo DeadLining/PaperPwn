@@ -294,6 +294,7 @@ export async function generateSummary(paperId: string | number): Promise<string>
   if (!config) throw new Error("AI config not found. Please configure AI settings first.");
   return await invoke("ai_generate_summary", {
     paperId: String(paperId),
+    context: null,
     config: {
       apiBase: config.apiBase,
       apiKey: config.apiKey,
@@ -310,6 +311,7 @@ export async function generateSummaryWithContext(paperId: string | number, conte
   if (!config) throw new Error("AI config not found. Please configure AI settings first.");
   return await invoke("ai_generate_summary", {
     paperId: String(paperId),
+    context,
     config: {
       apiBase: config.apiBase,
       apiKey: config.apiKey,

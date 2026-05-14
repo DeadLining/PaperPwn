@@ -1,28 +1,14 @@
-mod metadata;
 mod files;
 mod library_fs;
+mod metadata;
 
-use tauri::Manager;
 use library_fs::{
-    get_recent_papers,
-    get_annotations_for_paper,
-    create_annotation,
-    update_annotation,
-    delete_annotation,
-    ai_generate_summary,
-    ai_explain_text,
-    ai_chat,
-    ai_translate_text,
-    save_mindmap,
-    get_mindmap,
-    generate_mindmap,
-    generate_outline,
-    get_generated_outline,
-    get_note,
-    save_note,
-    get_conversations,
-    save_conversation,
+    ai_chat, ai_explain_text, ai_generate_summary, ai_translate_text, create_annotation,
+    delete_annotation, generate_mindmap, generate_outline, get_annotations_for_paper,
+    get_conversations, get_generated_outline, get_mindmap, get_note, get_recent_papers,
+    save_conversation, save_mindmap, save_note, update_annotation,
 };
+use tauri::Manager;
 fn setup_paper_library(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     library_fs::setup_library(app)
 }
@@ -56,10 +42,7 @@ async fn import_paper_from_url(
 }
 
 #[tauri::command]
-fn delete_paper(
-    app: tauri::AppHandle,
-    paper_id: String,
-) -> Result<String, String> {
+fn delete_paper(app: tauri::AppHandle, paper_id: String) -> Result<String, String> {
     library_fs::delete_paper(&app, &paper_id)
 }
 
@@ -73,45 +56,71 @@ fn get_fs_papers(
     limit: Option<usize>,
     offset: Option<usize>,
 ) -> Result<Vec<library_fs::PaperMetadata>, String> {
-    library_fs::list_papers(&app, library_fs::GetPapersParams { search, read_status, starred, folder_id, limit, offset })
+    library_fs::list_papers(
+        &app,
+        library_fs::GetPapersParams {
+            search,
+            read_status,
+            starred,
+            folder_id,
+            limit,
+            offset,
+        },
+    )
 }
 
 #[tauri::command]
-fn update_fs_paper(app: tauri::AppHandle, update: library_fs::PaperUpdate) -> Result<library_fs::PaperMetadata, String> {
+fn update_fs_paper(
+    app: tauri::AppHandle,
+    update: library_fs::PaperUpdate,
+) -> Result<library_fs::PaperMetadata, String> {
     library_fs::update_paper(&app, update)
 }
 
 #[tauri::command]
-fn toggle_fs_starred(app: tauri::AppHandle, paper_id: String) -> Result<library_fs::PaperMetadata, String> {
+fn toggle_fs_starred(
+    app: tauri::AppHandle,
+    paper_id: String,
+) -> Result<library_fs::PaperMetadata, String> {
     let paper = library_fs::read_paper(&app, &paper_id)?;
-    library_fs::update_paper(&app, library_fs::PaperUpdate {
-        id: paper_id,
-        title: None,
-        authors: None,
-        year: None,
-        abstract_: None,
-        doi: None,
-        read_status: None,
-        starred: Some(if paper.starred == 0 { 1 } else { 0 }),
-        last_page: None,
-        folder_ids: None,
-    })
+    library_fs::update_paper(
+        &app,
+        library_fs::PaperUpdate {
+            id: paper_id,
+            title: None,
+            authors: None,
+            year: None,
+            abstract_: None,
+            doi: None,
+            read_status: None,
+            starred: Some(if paper.starred == 0 { 1 } else { 0 }),
+            last_page: None,
+            folder_ids: None,
+        },
+    )
 }
 
 #[tauri::command]
-fn update_fs_reading_status(app: tauri::AppHandle, paper_id: String, read_status: String) -> Result<library_fs::PaperMetadata, String> {
-    library_fs::update_paper(&app, library_fs::PaperUpdate {
-        id: paper_id,
-        title: None,
-        authors: None,
-        year: None,
-        abstract_: None,
-        doi: None,
-        read_status: Some(read_status),
-        starred: None,
-        last_page: None,
-        folder_ids: None,
-    })
+fn update_fs_reading_status(
+    app: tauri::AppHandle,
+    paper_id: String,
+    read_status: String,
+) -> Result<library_fs::PaperMetadata, String> {
+    library_fs::update_paper(
+        &app,
+        library_fs::PaperUpdate {
+            id: paper_id,
+            title: None,
+            authors: None,
+            year: None,
+            abstract_: None,
+            doi: None,
+            read_status: Some(read_status),
+            starred: None,
+            last_page: None,
+            folder_ids: None,
+        },
+    )
 }
 
 #[tauri::command]
@@ -120,12 +129,19 @@ fn get_folders(app: tauri::AppHandle) -> Result<Vec<library_fs::FolderMetadata>,
 }
 
 #[tauri::command]
-fn create_folder(app: tauri::AppHandle, name: String) -> Result<library_fs::FolderMetadata, String> {
+fn create_folder(
+    app: tauri::AppHandle,
+    name: String,
+) -> Result<library_fs::FolderMetadata, String> {
     library_fs::create_folder(&app, name)
 }
 
 #[tauri::command]
-fn rename_folder(app: tauri::AppHandle, folder_id: String, name: String) -> Result<library_fs::FolderMetadata, String> {
+fn rename_folder(
+    app: tauri::AppHandle,
+    folder_id: String,
+    name: String,
+) -> Result<library_fs::FolderMetadata, String> {
     library_fs::rename_folder(&app, folder_id, name)
 }
 
@@ -135,7 +151,12 @@ fn delete_folder(app: tauri::AppHandle, folder_id: String) -> Result<String, Str
 }
 
 #[tauri::command]
-fn extract_pdf_text_sample(app: tauri::AppHandle, paper_id: String, max_pages: Option<usize>, max_chars: Option<usize>) -> Result<String, String> {
+fn extract_pdf_text_sample(
+    app: tauri::AppHandle,
+    paper_id: String,
+    max_pages: Option<usize>,
+    max_chars: Option<usize>,
+) -> Result<String, String> {
     let paper = library_fs::read_paper(&app, &paper_id)?;
     Ok(metadata::extract_text_sample_from_pdf(
         &paper.file_path,
@@ -153,7 +174,10 @@ fn set_macos_dock_icon() {
 
     unsafe {
         let _pool = NSAutoreleasePool::new(nil);
-        let icon_path = format!("{}/../src/assets/paperpwn-logo.png", env!("CARGO_MANIFEST_DIR"));
+        let icon_path = format!(
+            "{}/../src/assets/paperpwn-logo.png",
+            env!("CARGO_MANIFEST_DIR")
+        );
         let ns_path = NSString::alloc(nil).init_str(&icon_path);
         let image: id = NSImage::alloc(nil).initWithContentsOfFile_(ns_path);
         if image != nil {

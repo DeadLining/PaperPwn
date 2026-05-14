@@ -30,7 +30,8 @@ pub fn extract_text_sample_from_pdf(pdf_path: &str, max_pages: usize, max_chars:
 /// Falls back to filename (without extension) as title if parsing fails.
 pub fn extract_metadata_from_pdf(pdf_path: &str) -> ExtractedMetadata {
     let path = Path::new(pdf_path);
-    let filename_title = path.file_name()
+    let filename_title = path
+        .file_name()
         .and_then(|n| n.to_str())
         .map(|s| s.replace(".pdf", ""))
         .unwrap_or_else(|| "Untitled".to_string());
@@ -111,7 +112,11 @@ fn decode_pdf_string(bytes: &[u8]) -> String {
 
 fn extract_title_from_doc(doc: &Document, fallback: &str) -> String {
     let title = get_info_string(doc, b"Title");
-    if !title.is_empty() { title } else { fallback.to_string() }
+    if !title.is_empty() {
+        title
+    } else {
+        fallback.to_string()
+    }
 }
 
 fn extract_authors_from_doc(doc: &Document) -> String {
@@ -154,8 +159,9 @@ fn extract_page_text(doc: &Document, page_id: lopdf::ObjectId) -> String {
                 // Handle Tj: (text) Tj
                 if let Some(pos) = line.find(" Tj") {
                     let before = line[..pos].trim();
-                    if (before.starts_with('(') && before.ends_with(')')) ||
-                       (before.starts_with('<') && before.ends_with('>')) {
+                    if (before.starts_with('(') && before.ends_with(')'))
+                        || (before.starts_with('<') && before.ends_with('>'))
+                    {
                         let text = strip_text_delimiters(before);
                         if !text.is_empty() {
                             current_line.push_str(&text);
@@ -166,19 +172,22 @@ fn extract_page_text(doc: &Document, page_id: lopdf::ObjectId) -> String {
                 else if let Some(pos) = line.find(" TJ") {
                     let before = line[..pos].trim();
                     if before.starts_with('[') {
-                        let inner = &before[1..before.len()-1];
+                        let inner = &before[1..before.len() - 1];
                         let mut segment = String::new();
                         let mut in_paren = false;
                         let mut paren_content = String::new();
                         for ch in inner.chars() {
-                            if ch == '(' { in_paren = true; paren_content.clear(); }
-                            else if ch == ')' {
+                            if ch == '(' {
+                                in_paren = true;
+                                paren_content.clear();
+                            } else if ch == ')' {
                                 in_paren = false;
                                 if !paren_content.is_empty() {
                                     segment.push_str(&paren_content);
                                 }
+                            } else if in_paren {
+                                paren_content.push(ch);
                             }
-                            else if in_paren { paren_content.push(ch); }
                         }
                         if !segment.is_empty() {
                             current_line.push_str(&segment);
@@ -196,9 +205,8 @@ fn extract_page_text(doc: &Document, page_id: lopdf::ObjectId) -> String {
 
 fn strip_text_delimiters(s: &str) -> String {
     let s = s.trim();
-    if (s.starts_with('(') && s.ends_with(')')) ||
-       (s.starts_with('<') && s.ends_with('>')) {
-        let inner = &s[1..s.len()-1];
+    if (s.starts_with('(') && s.ends_with(')')) || (s.starts_with('<') && s.ends_with('>')) {
+        let inner = &s[1..s.len() - 1];
         if s.starts_with('<') {
             hex_to_string(inner)
         } else {
@@ -228,7 +236,9 @@ fn unescape_pdf_string(s: &str) -> String {
                             if let Some(&next_ch) = chars.peek() {
                                 if next_ch.is_ascii_digit() && next_ch != '8' && next_ch != '9' {
                                     octal.push(chars.next().unwrap());
-                                } else { break; }
+                                } else {
+                                    break;
+                                }
                             }
                         }
                         if let Ok(byte) = u8::from_str_radix(&octal, 8) {
@@ -248,8 +258,9 @@ fn unescape_pdf_string(s: &str) -> String {
 fn hex_to_string(hex: &str) -> String {
     let hex: String = hex.chars().filter(|c| !c.is_whitespace()).collect();
     let mut result = String::new();
-    let bytes: Vec<u8> = (0..hex.len()).step_by(2)
-        .filter_map(|i| u8::from_str_radix(&hex[i..i+2.min(hex.len()-i)], 16).ok())
+    let bytes: Vec<u8> = (0..hex.len())
+        .step_by(2)
+        .filter_map(|i| u8::from_str_radix(&hex[i..i + 2.min(hex.len() - i)], 16).ok())
         .collect();
     result.push_str(&String::from_utf8_lossy(&bytes));
     result
@@ -260,7 +271,8 @@ fn extract_doi_from_doc(doc: &Document) -> String {
         let text = extract_page_text(doc, page_id);
         if let Some(pos) = text.find("10.") {
             let rest = &text[pos..];
-            let doi_end = rest.find(|c: char| c == ' ' || c == '\n' || c == '\r')
+            let doi_end = rest
+                .find(|c: char| c == ' ' || c == '\n' || c == '\r')
                 .unwrap_or(rest.len().min(100));
             let potential_doi = &rest[..doi_end];
             if let Some(slash_pos) = potential_doi.find('/') {
@@ -280,11 +292,19 @@ fn extract_abstract_from_doc(doc: &Document) -> String {
         if let Some(start) = lower.find("abstract") {
             let abstract_start = start + 8;
             let abstract_text = &text[abstract_start..];
-            let end_markers = ["Introduction", "1 Introduction", "1. Introduction", "\n1", "Keywords"];
+            let end_markers = [
+                "Introduction",
+                "1 Introduction",
+                "1. Introduction",
+                "\n1",
+                "Keywords",
+            ];
             let mut end_pos = abstract_text.len().min(2000);
             for marker in end_markers {
                 if let Some(pos) = abstract_text.find(marker) {
-                    if pos > 20 && pos < end_pos { end_pos = pos; }
+                    if pos > 20 && pos < end_pos {
+                        end_pos = pos;
+                    }
                 }
             }
             return abstract_text[..end_pos].trim().to_string();

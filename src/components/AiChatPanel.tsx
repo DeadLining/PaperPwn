@@ -1,5 +1,5 @@
 import { memo, useEffect, useState, useRef, useCallback } from "react"
-import { Send, Trash2, Sparkles, Loader2, RotateCcw, BookOpen, Brain } from "lucide-react"
+import { Send, Trash2, Sparkles, Loader2, RotateCcw, BookOpen, Brain, AtSign, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAiStore } from "@/lib/stores/ai-store"
@@ -57,6 +57,10 @@ function AiChatPanelComponent({ paperId }: AiChatPanelProps) {
   const [showExplain, setShowExplain] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [selectedPdfText, setSelectedPdfText] = useState<string>("")
+  const [contextScope, setContextScope] = useState<{ type: "auto" | "full" | "current" | "page"; page?: number }>({ type: "auto" })
+  const [showContextMenu, setShowContextMenu] = useState(false)
+  const totalPages = usePdfViewerStore((s) => s.totalPages)
+  const visibleCurrentPage = usePdfViewerStore((s) => s.currentPage)
 
   // Load AI config on mount so chat works without visiting Settings first
   useEffect(() => {
@@ -81,19 +85,43 @@ function AiChatPanelComponent({ paperId }: AiChatPanelProps) {
   }, [])
 
 
+  const describeContextScope = () => {
+    if (contextScope.type === "full") return "全文"
+    if (contextScope.type === "current") return `当前页 ${visibleCurrentPage}`
+    if (contextScope.type === "page") return `第 ${contextScope.page} 页`
+    return "自动"
+  }
+
+  const buildContext = () => {
+    const currentPage = usePdfViewerStore.getState().currentPage
+    const lines = [`page:${currentPage}`]
+    if (contextScope.type === "full") lines.push("scope:full")
+    if (contextScope.type === "current") lines.push(`scope:page:${currentPage}`)
+    if (contextScope.type === "page" && contextScope.page) lines.push(`scope:page:${contextScope.page}`)
+    if (selectedPdfText) lines.push(`selected:${selectedPdfText}`)
+    return lines.join("\n")
+  }
+
+  const handleInputChange = (value: string) => {
+    setInput(value)
+    const lastToken = value.split(/\s/).pop() || ""
+    setShowContextMenu(lastToken.startsWith("@"))
+  }
+
+  const handlePickContext = (scope: { type: "auto" | "full" | "current" | "page"; page?: number }) => {
+    setContextScope(scope)
+    setShowContextMenu(false)
+    setInput((value) => value.replace(/@[^\s]*$/, "").trimStart())
+  }
+
   const handleSend = async () => {
     if (!input.trim()) return
     const question = input.trim()
-    const currentPage = usePdfViewerStore.getState().currentPage
-    let context: string | undefined
-    if (selectedPdfText) {
-      context = `page:${currentPage}\nselected:${selectedPdfText}`
-    } else {
-      context = `page:${currentPage}`
-    }
+    const context = buildContext()
 
     setInput("")
     setSelectedPdfText("")
+    setShowContextMenu(false)
     await aiChat(paperId, question, context)
   }
 
@@ -177,10 +205,20 @@ function AiChatPanelComponent({ paperId }: AiChatPanelProps) {
               <p className="text-xs text-muted-foreground">或点击 ✦ 生成摘要</p>
             </div>
           )}
-          {selectedPdfText && (
-            <div className="rounded-lg px-3 py-2 text-xs bg-muted text-muted-foreground border border-border">
-              <span className="font-medium">选中的PDF文本：</span>
-              {selectedPdfText.length > 100 ? selectedPdfText.substring(0, 100) + "..." : selectedPdfText}
+          {(selectedPdfText || contextScope.type !== "auto") && (
+            <div className="rounded-lg px-3 py-2 text-xs bg-muted text-muted-foreground border border-border space-y-1">
+              {contextScope.type !== "auto" && (
+                <div className="flex items-center justify-between gap-2">
+                  <span><span className="font-medium">上下文：</span>{describeContextScope()}</span>
+                  <button className="text-muted-foreground hover:text-foreground" onClick={() => setContextScope({ type: "auto" })} title="清除上下文"><X className="h-3 w-3" /></button>
+                </div>
+              )}
+              {selectedPdfText && (
+                <div>
+                  <span className="font-medium">选中的PDF文本：</span>
+                  {selectedPdfText.length > 100 ? selectedPdfText.substring(0, 100) + "..." : selectedPdfText}
+                </div>
+              )}
             </div>
           )}
           {conversations.map((msg, i) => (
@@ -211,9 +249,23 @@ function AiChatPanelComponent({ paperId }: AiChatPanelProps) {
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
-      <div className="border-t border-border p-2">
+      <div className="border-t border-border p-2 relative">
+        {showContextMenu && (
+          <div className="absolute bottom-12 left-2 right-2 z-20 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-1 text-xs">
+            <div className="max-h-[180px] overflow-y-auto overscroll-contain pr-1">
+              <button className="w-full text-left px-2 py-1.5 rounded hover:bg-accent" onClick={() => handlePickContext({ type: "full" })}>@全文 - 使用整篇论文检索</button>
+              <button className="w-full text-left px-2 py-1.5 rounded hover:bg-accent" onClick={() => handlePickContext({ type: "current" })}>@当前页 - 只看当前 Page {visibleCurrentPage}</button>
+              {Array.from({ length: totalPages || 0 }, (_, i) => i + 1).map((page) => (
+                <button key={page} className="w-full text-left px-2 py-1.5 rounded hover:bg-accent" onClick={() => handlePickContext({ type: "page", page })}>@第{page}页</button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="flex gap-2">
-          <input type="text" className="flex-1 px-3 py-1.5 text-xs border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring" placeholder="Ask about this paper..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) handleSend() }} disabled={chatLoading || summaryLoading} />
+          <Button variant={contextScope.type === "auto" ? "ghost" : "secondary"} size="icon" className="h-7 w-7 shrink-0" onClick={() => setShowContextMenu((v) => !v)} title={`上下文：${describeContextScope()}`}>
+            <AtSign className="h-3 w-3" />
+          </Button>
+          <input type="text" className="flex-1 px-3 py-1.5 text-xs border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring" placeholder="输入问题，或 @ 选择全文/页码..." value={input} onChange={(e) => handleInputChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) handleSend(); if (e.key === "Escape") setShowContextMenu(false) }} disabled={chatLoading || summaryLoading} />
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSend} disabled={chatLoading || !input.trim()}>
             <Send className="h-3 w-3" />
           </Button>

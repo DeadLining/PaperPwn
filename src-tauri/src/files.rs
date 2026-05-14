@@ -1,7 +1,7 @@
-use sha2::{Sha256, Digest};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::Path;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
@@ -18,8 +18,11 @@ pub fn compute_file_hash(path: &Path) -> Result<String, String> {
     let mut reader = std::io::BufReader::new(file);
     let mut buffer = [0u8; 8192];
     loop {
-        let n = std::io::Read::read(&mut reader, &mut buffer).map_err(|e| format!("Read error: {}", e))?;
-        if n == 0 { break; }
+        let n = std::io::Read::read(&mut reader, &mut buffer)
+            .map_err(|e| format!("Read error: {}", e))?;
+        if n == 0 {
+            break;
+        }
         hasher.update(&buffer[..n]);
     }
     Ok(format!("{:x}", hasher.finalize()))
